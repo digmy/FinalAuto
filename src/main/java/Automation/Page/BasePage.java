@@ -1,5 +1,6 @@
 package Automation.Page;
 
+import Automation.TestConfig.DriverTestBase;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
@@ -8,8 +9,7 @@ import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import com.github.javafaker.Faker;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
 
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
@@ -18,33 +18,29 @@ import java.util.List;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
+import static java.lang.System.out;
+
 public class BasePage {
-
-    static Logger logger = LogManager.getLogger(BasePage.class);
-    public static WebDriver driver;
-    private static WebDriverWait wait;
-    private static final int timeout = 20;
-    private static Actions actions;
+    protected static WebDriver driver = DriverTestBase.getDriver();
+    protected static WebDriverWait wait = DriverTestBase.getWait();
+    protected static Actions actions = new Actions(driver);
+    protected static JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
     private static final Faker faker = new Faker();
+    private static final int timeout = 20;
 
-    public BasePage(WebDriver driver) {
-        BasePage.driver = driver;
-        wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
-        actions = new Actions(driver);
-    }
-
-    public static WebDriver getDriver() {
-        if (driver == null) {
-            driver = new ChromeDriver();
-            driver.manage().window().maximize();
+    public static WebDriverWait getWait() {
+        if (wait == null) {
             wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
-            actions = new Actions(driver);
-            System.out.println("Tests are running");
         }
-        return driver;
+        return wait;
     }
 
-    public static void acceptCookies() {
+    public static Faker getFaker() {
+        return faker;
+    }
+
+    public static void openSite(String url) {
+        driver.get(url);
         try {
             WebElement acceptCookies = wait.until(ExpectedConditions.elementToBeClickable(By.id("didomi-notice-agree-button")));
             acceptCookies.click();
@@ -53,23 +49,11 @@ public class BasePage {
         }
     }
 
-    public static WebDriverWait getWait() {
-        if (wait == null) {
-            getDriver();
-        }
-        return wait;
-    }
-
-    public static Faker getFaker() {
-
-        return new Faker();
-    }
-
     public static boolean waitForElementToDisappear(WebDriver driver, By locator) {
         try {
             return wait.until(ExpectedConditions.invisibilityOfElementLocated(locator));
         } catch (TimeoutException e) {
-            logger.error("Element still visible: " + locator);
+            out.println("Element still visible: " + locator);
             return false;
         }
     }
@@ -82,10 +66,10 @@ public class BasePage {
 
             return wait.until(ExpectedConditions.visibilityOfAllElements(elements));
         } catch (TimeoutException e) {
-            logger.error("Timeout: Los elementos no se encontraron o no se hicieron visibles a tiempo.");
+            out.println("Timeout: Los elementos no se encontraron o no se hicieron visibles a tiempo.");
             return new ArrayList<>();
         } catch (Exception e) {
-            logger.error("Error al esperar los elementos: " + e.getMessage());
+            out.println("Error al esperar los elementos: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -114,13 +98,13 @@ public class BasePage {
     public static void clickElement(WebDriver driver, WebElement element) {
         try {
             new Actions(driver).moveToElement(element).click().perform();
-            logger.info("Clicked on the element.");
+            out.println("Clicked on the element.");
         } catch (Exception e) {
             try {
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-                logger.error("Clicked on the element using JavaScript.");
+                out.println("Clicked on the element using JavaScript.");
             } catch (Exception jsException) {
-                logger.error("Failed to click on the element: " + jsException.getMessage());
+                out.println("Failed to click on the element: " + jsException.getMessage());
                 Assert.fail("Failed to click on the element.");
             }
         }
@@ -133,7 +117,7 @@ public class BasePage {
             );
             Thread.sleep(300);
         } catch (Exception e) {
-            logger.error("Error scrolling to element: " + e.getMessage());
+            out.println("Error scrolling to element: " + e.getMessage());
         }
     }
 
@@ -152,11 +136,11 @@ public class BasePage {
             if (element != null) {
                 return element;
             } else {
-                logger.info("Element not found for the locator: " + locator);
+                out.println("Element not found for the locator: " + locator);
                 return null;
             }
         } catch (Exception e) {
-            logger.error("Error finding element: " + e.getMessage());
+            out.println("Error finding element: " + e.getMessage());
             return null;
         }
     }
@@ -175,7 +159,7 @@ public class BasePage {
                     + "}";
             return (Boolean) js.executeScript(script, selector);
         } catch (Exception e) {
-            logger.error("Error in searchSelectorInDOM: " + e.getMessage());
+            out.println("Error in searchSelectorInDOM: " + e.getMessage());
             return false;
         }
     }
@@ -190,87 +174,107 @@ public class BasePage {
         return selectorStr;
     }
 
+    private static WebElement waitForElement(By locator) {
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+        jsExecutor.executeScript("arguments[0].scrollIntoView(true);", element);
+        return element;
+    }
+
+    private static void selectByIndex(WebElement element, int index) {
+        Select select = new Select(element);
+        select.selectByIndex(index);
+    }
+
     public static void selectDinningOptions() {
         try {
             List<WebElement> dinningElements = driver.findElements(
                     By.cssSelector("#ddl_73c65394-222b-b842-75c2-6c814d7cd934 select[autocomplete='on']")
             );
             if (dinningElements.isEmpty()) {
-                logger.info("Dining option is not available. Proceeding with passenger registration.");
+                out.println("Dining option is not available. Proceeding with passenger registration.");
                 return;
             }
             WebElement dinningDropdown = dinningElements.get(0);
             Select selectOne = new Select(dinningDropdown);
             if (selectOne.getOptions().size() > 1) {
-                logger.info("There are at least 2 options available for dinner");
+                out.println("There are at least 2 options available for dinner");
                 selectOne.selectByIndex(1);
-                logger.info("Dinner option selected");
+                out.println("Dinner option selected");
             } else {
-                logger.info("Only one dining option available, proceeding with normal flow.");
+                out.println("Only one dining option available, proceeding with normal flow.");
             }
 
         } catch (Exception e) {
-            logger.error("Error handling dining options: " + e.getMessage());
+            out.println("Error handling dining options: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     public static void fillPassengerForm(int passengerNumber, String firstName, String lastName, String email, String phone, LocalDate birthDate, boolean isFirstPassenger) {
         try {
-            WebElement nameField = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#FirstName_" + passengerNumber + "_1")));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", nameField);
-            nameField.sendKeys(firstName);
-
-            WebElement lastnameField = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#LastName_" + passengerNumber + "_1")));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", lastnameField);
-            lastnameField.sendKeys(lastName);
-
+            fillNameFields(passengerNumber, firstName, lastName);
             if (isFirstPassenger) {
-                WebElement emailField = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#Email__" + passengerNumber + "_1")));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", emailField);
-                emailField.sendKeys(email);
-
-                WebElement confirmEmailField = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#ConfirmEmail_" + passengerNumber + "_1")));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", confirmEmailField);
-                confirmEmailField.sendKeys(email);
-
-                WebElement prefixDropdown = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#ddl_f638e776-0812-945d-ce60-4f87c1ae7d63")));
-                Select prefixSelect = new Select(prefixDropdown);
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", prefixDropdown);
-                prefixSelect.selectByIndex(109);
-
-                WebElement phoneField = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#PhoneNumber_" + passengerNumber + "_1")));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", phoneField);
-                phoneField.sendKeys(phone);
+                fillContactDetails(passengerNumber, email, phone);
+            } else {
+                selectCountryOfResidence(passengerNumber);
             }
-
-            if (!isFirstPassenger) {
-                WebElement countryDropdown = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#CountryOfResidence_" + passengerNumber + "_1")));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", countryDropdown);
-                Select countrySelect = new Select(countryDropdown);
-                countrySelect.selectByIndex(1);
-            }
-
-            try {
-                WebElement birthField = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("DateOfBirth_" + passengerNumber + "_1")));
-                String formattedDate = birthDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", birthField);
-                birthField.clear();
-                Thread.sleep(500);
-                birthField.sendKeys(formattedDate);
-            } catch (Exception e) {
-                logger.error("Error filling passenger " + passengerNumber + ": " + e.getMessage());
-                e.printStackTrace();
-            }
-
-            WebElement genderDropdown = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#Gender_" + passengerNumber + "_1")));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", genderDropdown);
-            Select genderSelect = new Select(genderDropdown);
-            genderSelect.selectByIndex(0);
+            fillBirthDate(passengerNumber, birthDate);
+            selectGender(passengerNumber);
         } catch (Exception e) {
-            logger.error("Error filling passenger " + passengerNumber + ": " + e.getMessage());
+            System.out.println("Error filling passenger " + passengerNumber + ": " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static void fillNameFields(int passengerNumber, String firstName, String lastName) {
+        WebElement nameField = waitForElement(By.cssSelector("#FirstName_" + passengerNumber + "_1"));
+        nameField.sendKeys(firstName);
+
+        WebElement lastNameField = waitForElement(By.cssSelector("#LastName_" + passengerNumber + "_1"));
+        lastNameField.sendKeys(lastName);
+    }
+
+    private static void fillContactDetails(int passengerNumber, String email, String phone) {
+        WebElement emailField = waitForElement(By.cssSelector("#Email__" + passengerNumber + "_1"));
+        emailField.sendKeys(email);
+
+        WebElement confirmEmailField = waitForElement(By.cssSelector("#ConfirmEmail_" + passengerNumber + "_1"));
+        confirmEmailField.sendKeys(email);
+
+        WebElement prefixDropdown = waitForElement(By.cssSelector("#ddl_f638e776-0812-945d-ce60-4f87c1ae7d63"));
+        selectByIndex(prefixDropdown, 109);
+
+        WebElement phoneField = waitForElement(By.cssSelector("#PhoneNumber_" + passengerNumber + "_1"));
+        phoneField.sendKeys(phone);
+    }
+
+    private static void selectCountryOfResidence(int passengerNumber) {
+        WebElement countryDropdown = waitForElement(By.cssSelector("#CountryOfResidence_" + passengerNumber + "_1"));
+        selectByIndex(countryDropdown, 1);
+    }
+
+    private static void fillBirthDate(int passengerNumber, LocalDate birthDate) {
+        try {
+            WebElement birthField = waitForElement(By.id("DateOfBirth_" + passengerNumber + "_1"));
+            String formattedDate = birthDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            birthField.clear();
+            Thread.sleep(500);
+            birthField.sendKeys(formattedDate);
+        } catch (Exception e) {
+            System.out.println("Error filling birth date for passenger " + passengerNumber + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+        /*static LocalDate birthGenerator() {
+        long startEpochDay = LocalDate.of(1950, 1, 1).toEpochDay();
+        long endEpochDay = LocalDate.of(2000, 12, 31).toEpochDay();
+        long randomDay = startEpochDay + Math.abs(random.nextLong()) % (endEpochDay - startEpochDay);
+        return LocalDate.ofEpochDay(randomDay);
+    }*/
+    }
+
+    private static void selectGender(int passengerNumber) {
+        WebElement genderDropdown = waitForElement(By.cssSelector("#Gender_" + passengerNumber + "_1"));
+        selectByIndex(genderDropdown, 0);
     }
 
     public static void fillDocumentType(int passengerNumber) {
@@ -281,7 +285,7 @@ public class BasePage {
             documentTypeSelect.selectByValue("pas");
             fillPasaportFields(passengerNumber);
         } catch (Exception e) {
-            logger.error("Error filling document type for passenger " + passengerNumber + ": " + e.getMessage());
+            out.println("Error filling document type for passenger " + passengerNumber + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -312,7 +316,7 @@ public class BasePage {
             Select nationalitySelect = new Select(nationalityDropdown);
             nationalitySelect.selectByVisibleText(faker.nation().nationality());
         } catch (Exception e) {
-            logger.error("Error filling Passaporto fields for passenger " + passengerNumber + ": " + e.getMessage());
+            out.println("Error filling Passaporto fields for passenger " + passengerNumber + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -327,7 +331,7 @@ public class BasePage {
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", phoneField);
             phoneField.sendKeys(faker.phoneNumber().cellPhone());
         } catch (Exception e) {
-            logger.error("Error filling emergency contact: " + e.getMessage());
+            out.println("Error filling emergency contact: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -1,89 +1,99 @@
-import Automation.TestConfig.DriverTestBase;
 import Automation.Page.BasePage;
+import Automation.TestConfig.DriverTestBase;
 import Automation.Page.BookingPageDOM;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import static java.lang.System.out;
 
 public class BookingTest extends DriverTestBase {
     BookingPageDOM bookingPageDOMPage;
-    Logger logger = LogManager.getLogger(BookingTest.class);
+
+    @BeforeClass
+    public void setup() {
+        bookingPageDOMPage = new BookingPageDOM(getDriver());
+    }
 
     @Test
+    public void testBookingSearch() {
+        BasePage.openSite("https://www.msccrociere.it");
+        out.println("Starting booking test...");
+    }
+
+    @Test(dependsOnMethods = {"testBookingSearch"})
     public void homePage(){
-
-        BasePage.acceptCookies();
-
-        logger.info("Starting booking test...");
-        logger.info("Inside the search");
+        out.println("Inside the search");
         bookingPageDOMPage.testFYI();
-
-        logger.info("Search curise started");
-        bookingPageDOMPage.selectCruiseCard();
     }
 
     @Test(dependsOnMethods = {"homePage"})
-    public void firstStepOfBF() {
-        logger.info("Step 0 complete");
+        public void searchCruiseInHomePage(){
+        out.println("Search curise started");
+        bookingPageDOMPage.selectCruiseCard();
+    }
+
+    @Test(dependsOnMethods = {"searchCruiseInHomePage"})
+    public void offertStepOfBF() {
+        out.println("Step 0 complete");
         bookingPageDOMPage.selectOffer();
     }
 
-    @Test(dependsOnMethods = {"firstStepOfBF"})
-    public void secondStepOfBF() {
-        logger.info("Step 1 complete");
+    @Test(dependsOnMethods = {"offertStepOfBF"})
+    public void selectCabinStepOfBF() {
+        out.println("Step 1 complete");
         bookingPageDOMPage.selectCabin();
 
     }
 
-    @Test(dependsOnMethods = {"secondStepOfBF"})
-    public void thirdStepOfBF() {
-        logger.info("Step 2 complete");
+    @Test(dependsOnMethods = {"selectCabinStepOfBF"})
+    public void experienceStepOfBF() {
+        out.println("Step 2 complete");
         bookingPageDOMPage.selectExperience();
 
     }
 
-    @Test(dependsOnMethods = {"thirdStepOfBF"})
-    public void fourthStepOfBF() {
+    @Test(dependsOnMethods = {"experienceStepOfBF"})
+    public void cabinPositionStepOfBF() {
 
-        logger.info("Step 3 complete");
+        out.println("Step 3 complete");
         bookingPageDOMPage.selectCabinPosition();
 
     }
 
-    @Test(dependsOnMethods = {"fourthStepOfBF"})
-    public void fifthStepOfBF() {
+    @Test(dependsOnMethods = {"cabinPositionStepOfBF"})
+    public void cabinSelectStepOfBF() {
 
-        logger.info("Step 4 complete");
+        out.println("Step 4 complete");
         bookingPageDOMPage.selectCabinNumber();
 
     }
 
-    @Test(dependsOnMethods = {"fifthStepOfBF"})
-    public void sixthStepOfBF() {
+    @Test(dependsOnMethods = {"cabinSelectStepOfBF"})
+    public void passengerInfoStepOfBF() {
 
-        logger.info("Step 5 complete");
+        out.println("Step 5 complete");
         bookingPageDOMPage.passengerRegister();
     }
 
-    @Test(dependsOnMethods = {"sixthStepOfBF"})
-    public void seventhStepOfBF() {
+    @Test(dependsOnMethods = {"passengerInfoStepOfBF"})
+    public void specialOffStepOfBF() {
 
-        logger.info("Step 6 complete");
+        out.println("Step 6 complete");
         bookingPageDOMPage.selectSpecialOffers();
     }
 
-    @Test(dependsOnMethods = {"seventhStepOfBF"})
-    public void eihgthStepOfBF() {
+    @Test(dependsOnMethods = {"specialOffStepOfBF"})
+    public void checkoutStepOfBF() {
 
-        logger.info("Step 7 complete");
+        out.println("Step 7 complete");
         bookingPageDOMPage.proceedToCheckout();
     }
 
-    @Test(dependsOnMethods = {"eighthStepOfBF"})
+    @Test(dependsOnMethods = {"checkoutStepOfBF"})
     public void validateResults() {
 
-        logger.info("Validation of booking result");
+        out.println("Validation of booking result");
         Assert.assertTrue(driver.getTitle().contains("Results"), "Search was not successful.");
     }
 
